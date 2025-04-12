@@ -1,12 +1,13 @@
 # Satellite Signal Log Analyzer
 Built for the Cerebras Llama 4 Hackathon (April 2025).
 
-Analyzes satellite radio logs to detect issues (e.g., interference at specific frequencies) and priorities (e.g., emergencies) using Llama 4 via Cerebras API. Features sample and random log generators, a clear button, and a sleek dark theme.
+Analyzes satellite radio logs with Llama 4 via Cerebras API, featuring interference risk scores, real-time alerts, log comparisons, and a styled UI with sample/random logs.
 
 ## How to Use
 1. Visit: https://workbykait-satelliteanalyzer.hf.space/
-2. Click "Load Sample Log," "Generate Random Log," or enter your own (format in `sample_log.txt`).
-3. Click "Analyze" for a summary, or "Clear Log" to start fresh.
+2. Use "Load Sample Log," "Generate Random Log," or enter your own.
+3. Click "Analyze" for a summary, "Generate Alert" for urgent messages, or "Compare Last Two Logs" for trends.
+4. Clear with "Clear Log."
 
 ## Sample Log
 ```text
