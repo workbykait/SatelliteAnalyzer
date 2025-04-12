@@ -4,6 +4,7 @@ import os
 import random
 from datetime import datetime, timedelta
 import plotly.express as px
+import re
 
 api_key = os.getenv("CEREBRAS_API_KEY")
 url = "https://api.cerebras.ai/v1/chat/completions"
@@ -69,10 +70,10 @@ def analyze_log(log_text):
             elif line.strip():
                 html += f"<li>{line.strip()}</li>"
         html += "</ul></div>"
-        # Extract signal strengths for plot
-        signals = [int(s.split("%")[0]) for s in log_text.split("\n") if "Signal Strength" in s]
-        times = [line.split(" | ")[0] for line in log_text.split("\n") if "Signal Strength" in s]
-        fig = px.line(x=times, y=signals, labels={"x": "Time", "y": "Signal Strength (%)"}, title="Signal Strength Trend")
+        # Extract signals with regex
+        signals = [int(m.group(1)) for m in re.finditer(r"Signal Strength: (\d+)%", log_text)]
+        times = [line.split(" | ")[0][-8:] for line in log_text.split("\n") if "Signal Strength" in s]
+        fig = px.line(x=times, y=signals, labels={"x": "Time (UTC)", "y": "Signal Strength (%)"}, title="Signal Strength Trend") if signals and times else None
         return summary, html, fig
     except Exception as e:
         return f"Error: API call failed - {str(e)}", None, None
@@ -110,7 +111,7 @@ def compare_logs():
                 "content": "Compare these two satellite radio logs and summarize trends in bullet points (e.g., signal strength changes, frequency issues, new emergencies):\n" + compare_text
             }
         ],
-        "max_completion_tokens": 300,  # Increased
+        "max_completion_tokens": 400,
         "temperature": 0.5
     }
     try:
@@ -131,7 +132,7 @@ def load_sample_log():
 def clear_log():
     return ""
 
-with gr.Blocks(theme="huggingface/dark") as interface:
+with gr.Blocks(theme="soft") as interface:
     gr.Markdown("# Satellite Signal Log Analyzer")
     gr.Markdown("Analyze satellite radio logs for issues, alerts, trends, and signal visuals using Llama 4 and Cerebras.")
     log_input = gr.Textbox(lines=5, label="Satellite Radio Log")
