@@ -42,31 +42,16 @@ def generate_random_log():
         entries.append(f"{time} | {lat}N, {lon}W | Frequency: {freq} GHz | Signal Strength: {signal}% | Message: {message}")
     return "\n".join(entries)
 
-def filter_log_by_frequency(log_text, min_freq, max_freq):
+def analyze_log(log_text):
     if not log_text.strip():
-        return log_text
-    filtered = []
-    for line in log_text.split("\n"):
-        match = re.search(r"Frequency: (\d+\.\d) GHz", line)
-        if match:
-            freq = float(match.group(1))
-            if min_freq <= freq <= max_freq:
-                filtered.append(line)
-        else:
-            filtered.append(line)  # Keep non-frequency lines
-    return "\n".join(filtered) if filtered else "No logs in frequency range."
-
-def analyze_log(log_text, min_freq, max_freq):
-    filtered_log = filter_log_by_frequency(log_text, min_freq, max_freq)
-    if not filtered_log.strip() or filtered_log.startswith("No logs"):
-        return filtered_log, None, None, None
-    LOG_HISTORY.append(filtered_log)
+        return "Error: Please enter a log.", None, None, None
+    LOG_HISTORY.append(log_text)
     data = {
         "model": "llama-4-scout-17b-16e-instruct",
         "messages": [
             {
                 "role": "user",
-                "content": "Analyze this satellite radio log and summarize in bullet points. Include interference risk scores (0-100, low signal <70% = high risk >80, emergency = 90). Ensure frequencies in issues and details:\n- Issues (e.g., low signal, noise, interference with frequency, risk score)\n- High-priority messages (e.g., emergencies, warnings)\n- Key details (coordinates, times, frequencies, signal strengths)\nLog:\n" + filtered_log
+                "content": "Analyze this satellite radio log and summarize in bullet points. Include interference risk scores (0-100, low signal <70% = high risk >80, emergency = 90). Ensure frequencies in issues and details:\n- Issues (e.g., low signal, noise, interference with frequency, risk score)\n- High-priority messages (e.g., emergencies, warnings)\n- Key details (coordinates, times, frequencies, signal strengths)\nLog:\n" + log_text
             }
         ],
         "max_completion_tokens": 500,
@@ -88,7 +73,7 @@ def analyze_log(log_text, min_freq, max_freq):
         html += "</ul></div>"
         signals = []
         times = []
-        for line in filtered_log.split("\n"):
+        for line in log_text.split("\n"):
             if "Signal Strength" in line:
                 match = re.search(r"Signal Strength: (\d+)%", line)
                 if match:
@@ -168,7 +153,6 @@ with gr.Blocks(css=css) as interface:
     gr.Markdown("# Satellite Signal Log Analyzer", elem_classes="header")
     gr.Markdown("Analyze logs for issues, alerts, and trends.", elem_classes="subheader")
     log_input = gr.Textbox(lines=5, show_label=False, placeholder="Enter or generate a log...")
-    freq_slider = gr.Slider(minimum=14.0, maximum=15.0, step=0.1, value=[14.0, 15.0], label="Frequency Range (GHz)")
     with gr.Row():
         sample_button = gr.Button("Sample Log")
         random_button = gr.Button("Random Log")
@@ -186,7 +170,7 @@ with gr.Blocks(css=css) as interface:
     sample_button.click(fn=load_sample_log, outputs=log_input)
     random_button.click(fn=generate_random_log, outputs=log_input)
     clear_button.click(fn=clear_log, outputs=log_input)
-    analyze_button.click(fn=analyze_log, inputs=[log_input, freq_slider], outputs=[output, output, plot_output, export_output])
+    analyze_button.click(fn=analyze_log, inputs=log_input, outputs=[output, output, plot_output, export_output])
     alert_button.click(fn=generate_alert, inputs=log_input, outputs=alert_output)
     compare_button.click(fn=compare_logs, outputs=[compare_output, compare_output])
     export_button.click(fn=lambda: None, outputs=export_output)
