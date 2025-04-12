@@ -59,21 +59,28 @@ def analyze_log(log_text):
     try:
         response = requests.post(url, json=data, headers=headers)
         summary = response.json()["choices"][0]["message"]["content"]
-        html = "<div style='font-family:Arial;'><h3>Analysis Summary</h3><ul>"
+        html = "<div style='font-family:Roboto; color:black; background:white; padding:10px; border-radius:5px; border:1px solid #ff6200;'><h3>Analysis</h3><ul>"
         for line in summary.split("\n"):
             if "Issues:" in line:
-                html += "<li><b style='color:red;'>Issues:</b><ul>"
+                html += "<li><b style='color:#ff6200;'>Issues:</b><ul>"
             elif "High-priority messages:" in line:
-                html += "</ul><li><b style='color:orange;'>High-priority messages:</b><ul>"
+                html += "</ul><li><b style='color:#ff6200;'>Priority Alerts:</b><ul>"
             elif "Key details:" in line:
-                html += "</ul><li><b style='color:lightblue;'>Key details:</b><ul>"
+                html += "</ul><li><b style='color:#ff6200;'>Details:</b><ul>"
             elif line.strip():
                 html += f"<li>{line.strip()}</li>"
         html += "</ul></div>"
-        # Extract signals with regex
-        signals = [int(m.group(1)) for m in re.finditer(r"Signal Strength: (\d+)%", log_text)]
-        times = [line.split(" | ")[0][-8:] for line in log_text.split("\n") if "Signal Strength" in s]
-        fig = px.line(x=times, y=signals, labels={"x": "Time (UTC)", "y": "Signal Strength (%)"}, title="Signal Strength Trend") if signals and times else None
+        signals = []
+        times = []
+        for line in log_text.split("\n"):
+            if "Signal Strength" in line:
+                match = re.search(r"Signal Strength: (\d+)%", line)
+                if match:
+                    signals.append(int(match.group(1)))
+                time_match = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}) UTC", line)
+                if time_match:
+                    times.append(time_match.group(1)[-5:])
+        fig = px.line(x=times, y=signals, labels={"x": "Time", "y": "Signal (%)"}, title="Signal Trend") if signals and len(signals) == len(times) else None
         return summary, html, fig
     except Exception as e:
         return f"Error: API call failed - {str(e)}", None, None
@@ -95,7 +102,7 @@ def generate_alert(log_text):
     try:
         response = requests.post(url, json=data, headers=headers)
         alert = response.json()["choices"][0]["message"]["content"]
-        return f"<div style='background:red; color:white; padding:10px; border-radius:5px;'>{alert}</div>"
+        return f"<div style='font-family:Roboto; background:#ff6200; color:white; padding:10px; border-radius:5px;'>{alert}</div>"
     except Exception as e:
         return f"Error: Alert failed - {str(e)}"
 
@@ -117,7 +124,7 @@ def compare_logs():
     try:
         response = requests.post(url, json=data, headers=headers)
         comparison = response.json()["choices"][0]["message"]["content"]
-        html = "<div style='font-family:Arial;'><h3>Log Comparison</h3><ul>"
+        html = "<div style='font-family:Roboto; color:black; background:white; padding:10px; border-radius:5px; border:1px solid #ff6200;'><h3>Comparison</h3><ul>"
         for line in comparison.split("\n"):
             if line.strip():
                 html += f"<li>{line.strip()}</li>"
@@ -132,22 +139,30 @@ def load_sample_log():
 def clear_log():
     return ""
 
-with gr.Blocks(theme="soft") as interface:
-    gr.Markdown("# Satellite Signal Log Analyzer")
-    gr.Markdown("Analyze satellite radio logs for issues, alerts, trends, and signal visuals using Llama 4 and Cerebras.")
-    log_input = gr.Textbox(lines=5, label="Satellite Radio Log")
+css = """
+body, .gradio-container { background: white; color: black; font-family: Roboto, sans-serif; }
+button { background: #ff6200; color: white; border: none; padding: 8px 16px; border-radius: 5px; }
+button:hover { background: #e55a00; }
+.input-text, .output-text { background: white; color: black; border: 1px solid #ff6200; border-radius: 5px; }
+h3 { color: #ff6200; }
+.header, .subheader { color: #ff6200; text-align: center; }
+"""
+with gr.Blocks(css=css) as interface:
+    gr.Markdown("# Satellite Signal Log Analyzer", elem_classes="header")
+    gr.Markdown("Analyze logs for issues, alerts, and trends.", elem_classes="subheader")
+    log_input = gr.Textbox(lines=5, show_label=False, placeholder="Enter or generate a log...")
     with gr.Row():
-        sample_button = gr.Button("Load Sample Log")
-        random_button = gr.Button("Generate Random Log")
-        clear_button = gr.Button("Clear Log")
+        sample_button = gr.Button("Sample Log")
+        random_button = gr.Button("Random Log")
+        clear_button = gr.Button("Clear")
     with gr.Row():
         analyze_button = gr.Button("Analyze")
-        alert_button = gr.Button("Generate Alert")
-        compare_button = gr.Button("Compare Last Two Logs")
-    output = gr.HTML(label="Analysis Summary")
-    plot_output = gr.Plot(label="Signal Strength Trend")
-    alert_output = gr.HTML(label="Satellite Alert")
-    compare_output = gr.HTML(label="Log Comparison")
+        alert_button = gr.Button("Alert")
+        compare_button = gr.Button("Compare Logs")
+    output = gr.HTML(show_label=False)
+    plot_output = gr.Plot(show_label=False)
+    alert_output = gr.HTML(show_label=False)
+    compare_output = gr.HTML(show_label=False)
     sample_button.click(fn=load_sample_log, outputs=log_input)
     random_button.click(fn=generate_random_log, outputs=log_input)
     clear_button.click(fn=clear_log, outputs=log_input)
