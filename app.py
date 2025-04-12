@@ -5,7 +5,6 @@ import random
 from datetime import datetime, timedelta
 import plotly.express as px
 import re
-import io
 
 api_key = os.getenv("CEREBRAS_API_KEY")
 url = "https://api.cerebras.ai/v1/chat/completions"
@@ -44,7 +43,7 @@ def generate_random_log():
 
 def analyze_log(log_text):
     if not log_text.strip():
-        return "Error: Please enter a log.", None, None, None
+        return "Error: Please enter a log.", None, None
     LOG_HISTORY.append(log_text)
     data = {
         "model": "llama-4-scout-17b-16e-instruct",
@@ -82,10 +81,9 @@ def analyze_log(log_text):
                 if time_match:
                     times.append(time_match.group(1)[-5:])
         fig = px.line(x=times, y=signals, labels={"x": "Time", "y": "Signal (%)"}, title="Signal Trend") if signals and len(signals) == len(times) else None
-        export_file = io.StringIO(summary)
-        return summary, html, fig, gr.File(value=export_file, file_name="summary.txt", visible=True)
+        return summary, html, fig
     except Exception as e:
-        return f"Error: API call failed - {str(e)}", None, None, None
+        return f"Error: API call failed - {str(e)}", None, None
 
 def generate_alert(log_text):
     if not log_text.strip():
@@ -161,18 +159,15 @@ with gr.Blocks(css=css) as interface:
         analyze_button = gr.Button("Analyze")
         alert_button = gr.Button("Alert")
         compare_button = gr.Button("Compare Logs")
-        export_button = gr.Button("Export")
     output = gr.HTML(show_label=False)
     plot_output = gr.Plot(show_label=False)
     alert_output = gr.HTML(show_label=False)
     compare_output = gr.HTML(show_label=False)
-    export_output = gr.File(show_label=False, visible=False)
     sample_button.click(fn=load_sample_log, outputs=log_input)
     random_button.click(fn=generate_random_log, outputs=log_input)
     clear_button.click(fn=clear_log, outputs=log_input)
-    analyze_button.click(fn=analyze_log, inputs=log_input, outputs=[output, output, plot_output, export_output])
+    analyze_button.click(fn=analyze_log, inputs=log_input, outputs=[output, output, plot_output])
     alert_button.click(fn=generate_alert, inputs=log_input, outputs=alert_output)
     compare_button.click(fn=compare_logs, outputs=[compare_output, compare_output])
-    export_button.click(fn=lambda: None, outputs=export_output)
 
 interface.launch()
