@@ -3,6 +3,7 @@ import gradio as gr
 import os
 import random
 from datetime import datetime, timedelta
+import plotly.express as px
 
 api_key = os.getenv("CEREBRAS_API_KEY")
 url = "https://api.cerebras.ai/v1/chat/completions"
@@ -17,7 +18,6 @@ SAMPLE_LOG = """
 2025-04-12 10:03 UTC | 40.9N, 74.2W | Frequency: 14.6 GHz | Signal Strength: 90% | Message: Emergency: Low battery alert.
 """
 
-# Store logs for comparison
 LOG_HISTORY = []
 
 def generate_random_log():
@@ -42,7 +42,7 @@ def generate_random_log():
 
 def analyze_log(log_text):
     if not log_text.strip():
-        return "Error: Please enter a log.", None
+        return "Error: Please enter a log.", None, None
     LOG_HISTORY.append(log_text)
     data = {
         "model": "llama-4-scout-17b-16e-instruct",
@@ -58,7 +58,6 @@ def analyze_log(log_text):
     try:
         response = requests.post(url, json=data, headers=headers)
         summary = response.json()["choices"][0]["message"]["content"]
-        # Format as HTML table
         html = "<div style='font-family:Arial;'><h3>Analysis Summary</h3><ul>"
         for line in summary.split("\n"):
             if "Issues:" in line:
@@ -70,9 +69,13 @@ def analyze_log(log_text):
             elif line.strip():
                 html += f"<li>{line.strip()}</li>"
         html += "</ul></div>"
-        return summary, html
+        # Extract signal strengths for plot
+        signals = [int(s.split("%")[0]) for s in log_text.split("\n") if "Signal Strength" in s]
+        times = [line.split(" | ")[0] for line in log_text.split("\n") if "Signal Strength" in s]
+        fig = px.line(x=times, y=signals, labels={"x": "Time", "y": "Signal Strength (%)"}, title="Signal Strength Trend")
+        return summary, html, fig
     except Exception as e:
-        return f"Error: API call failed - {str(e)}", None
+        return f"Error: API call failed - {str(e)}", None, None
 
 def generate_alert(log_text):
     if not log_text.strip():
@@ -107,7 +110,7 @@ def compare_logs():
                 "content": "Compare these two satellite radio logs and summarize trends in bullet points (e.g., signal strength changes, frequency issues, new emergencies):\n" + compare_text
             }
         ],
-        "max_completion_tokens": 200,
+        "max_completion_tokens": 300,  # Increased
         "temperature": 0.5
     }
     try:
@@ -130,7 +133,7 @@ def clear_log():
 
 with gr.Blocks(theme="huggingface/dark") as interface:
     gr.Markdown("# Satellite Signal Log Analyzer")
-    gr.Markdown("Analyze satellite radio logs for issues, alerts, and trends using Llama 4 and Cerebras.")
+    gr.Markdown("Analyze satellite radio logs for issues, alerts, trends, and signal visuals using Llama 4 and Cerebras.")
     log_input = gr.Textbox(lines=5, label="Satellite Radio Log")
     with gr.Row():
         sample_button = gr.Button("Load Sample Log")
@@ -141,12 +144,13 @@ with gr.Blocks(theme="huggingface/dark") as interface:
         alert_button = gr.Button("Generate Alert")
         compare_button = gr.Button("Compare Last Two Logs")
     output = gr.HTML(label="Analysis Summary")
+    plot_output = gr.Plot(label="Signal Strength Trend")
     alert_output = gr.HTML(label="Satellite Alert")
     compare_output = gr.HTML(label="Log Comparison")
     sample_button.click(fn=load_sample_log, outputs=log_input)
     random_button.click(fn=generate_random_log, outputs=log_input)
     clear_button.click(fn=clear_log, outputs=log_input)
-    analyze_button.click(fn=analyze_log, inputs=log_input, outputs=[output, output])
+    analyze_button.click(fn=analyze_log, inputs=log_input, outputs=[output, output, plot_output])
     alert_button.click(fn=generate_alert, inputs=log_input, outputs=alert_output)
     compare_button.click(fn=compare_logs, outputs=[compare_output, compare_output])
 
