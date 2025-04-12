@@ -59,17 +59,22 @@ def analyze_log(log_text):
 def load_sample_log():
     return SAMPLE_LOG
 
-with gr.Blocks() as interface:
+def clear_log():
+    return ""
+
+with gr.Blocks(theme="huggingface/dark") as interface:
     gr.Markdown("# Satellite Signal Log Analyzer")
-    gr.Markdown("Enter a satellite radio log or generate one to detect issues, priorities, and details (including frequencies) using Llama 4 and Cerebras.")
+    gr.Markdown("Enter, generate, or load a satellite radio log to detect issues, priorities, and details (including frequencies) using Llama 4 and Cerebras.")
     log_input = gr.Textbox(lines=5, label="Satellite Radio Log")
     with gr.Row():
         sample_button = gr.Button("Load Sample Log")
         random_button = gr.Button("Generate Random Log")
+        clear_button = gr.Button("Clear Log")
     output = gr.Textbox(label="Analysis Summary")
     analyze_button = gr.Button("Analyze")
     sample_button.click(fn=load_sample_log, outputs=log_input)
     random_button.click(fn=generate_random_log, outputs=log_input)
+    clear_button.click(fn=clear_log, outputs=log_input)
     analyze_button.click(fn=analyze_log, inputs=log_input, outputs=output)
 
 interface.launch()
